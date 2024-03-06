@@ -1,0 +1,94 @@
+---
+- name: Install tomcat9068 on oel7 instance
+  hosts: all
+  become: yes
+  vars:
+    mysecret: TanGo#12+1
+    mysql_url: 8.0.31
+    java_url: zulu11.60.19-ca-jdk11.0.17-linux_x64
+    tomcat_url: splashbi-apache-tomcat-9.0.70
+    user_name: splashbi
+    user_group: splashbi
+    mysql_new_password: Welcome#$4321
+  tasks:
+    - name : create a directory for softwares
+      ansible.builtin.file:      
+        path: /home/{{ user_name }}/tomcat_test
+        state: directory
+        owner: '{{ user_name }}'
+        group: '{{ user_group }}'
+    - name: Update the yum repo
+      ansible.builtin.yum:
+        update_cache: yes
+        state: present
+    - name: download tomcat software from artifactory
+      ansible.builtin.get_url:
+        url: http://192.168.4.252:8081/artifactory/Software/Linux-software/{{ tomcat_url }}.zip
+        dest: /home/{{ user_name }}/tomcat_test
+        username: admin
+        password: '{{ mysecret }}'
+        owner: '{{ user_name }}'
+        group: '{{ user_group }}'
+    - name: download java software from artifactory
+      ansible.builtin.get_url:
+        url: http://192.168.4.252:8081/artifactory/Software/Linux-software/{{ java_url }}.zip
+        dest: /home/{{ user_name }}/tomcat_test
+        username: admin
+        password: '{{ mysecret }}'
+        owner: '{{ user_name }}'
+        group: '{{ user_group }}'
+    - name: unzip java file
+      ansible.builtin.unarchive:
+        src: /home/{{ user_name }}/tomcat_test/{{ item }}.zip
+        dest: /home/{{ user_name }}/tomcat_test
+        mode: 0777
+        owner: '{{ user_name }}'
+        group: '{{ user_group }}'
+        remote_src: yes
+      loop:
+        - '{{ java_url }}'
+        - '{{ tomcat_url }}'
+    - name: chnge the jmxremote permissions
+      ansible.builtin.command: sudo sh -c 'chmod 600 /home/{{ user_name }}/tomcat_test/{{ tomcat_url }}/bin/jmxremote*'
+    - name: Set JAVA_HOME and CATALINA_HOME in .bash_profile
+      ansible.builtin.lineinfile:
+        dest: /home/{{ user_name }}/.bash_profile
+        line: '{{ item }}'
+        state: present
+      loop:
+        - 'export JAVA_HOME=/home/{{ user_name }}/tomcat_test/{{ java_url }}'
+        - 'export PATH=$JAVA_HOME/bin:$PATH'   
+        - 'export CATALINA_HOME=/home/{{ user_name }}/tomcat_test/{{ tomcat_url }}'
+        - 'export PATH=$CATALINA_HOME/bin:$PATH'
+    - name: Run .bash_profile
+      ansible.builtin.shell: source /home/{{ user_name }}/.bash_profile    
+    - name: download mysql software
+      ansible.builtin.unarchive:
+        src: https://cdn.mysql.com/archives/mysql-8.0/mysql-{{ mysql_url }}-1.el7.x86_64.rpm-bundle.tar
+        remote_src: yes
+        dest: /root
+    - name: Install RPM packages
+      ansible.builtin.shell: "cd /root; yum install -y *.rpm"
+    - name: Start MySQL Server
+      ansible.builtin.service:
+        name: mysqld
+        state: started
+    - name: Get the temporary password
+      ansible.builtin.shell: grep 'temporary password' /var/log/mysqld.log | awk '{print $NF}';
+      register: result
+    - name: update expired root user password
+      ansible.builtin.command: mysql --user root --password={{ result.stdout }} --connect-expired-password --execute="ALTER USER 'root'@'localhost' IDENTIFIED BY '{{ mysql_new_password }}';"
+    - name: copy my.cnf
+      ansible.builtin.copy:
+        src: /u01/AnsibleTest/my.cnf
+        dest: /etc/my.cnf
+        mode: 0644
+    - name: Select query to db acme with positional arguments
+      community.mysql.mysql_query:
+        login_host: localhost
+        login_user: root
+        login_password: Welcome#$4321
+        login_port: 3306
+        query:
+          - CREATE USER 'root'@'%' IDENTIFIED BY 'Welcome#$4321';
+          - GRANT ALL PRIVILEGES ON . TO 'root'@'%';

@@ -1,0 +1,57 @@
+---
+- name: Install tomcat9068 on oel7 instance
+  hosts: all
+  become: yes
+  vars:
+    mysecret: TanGo#12+1
+    mysql_url: 8.0.31
+    java_url: zulu11.60.19-ca-jdk11.0.17-linux_x64
+    tomcat_url: splashbi-apache-tomcat-9.0.70
+    user_name: splashbi
+    user_group: splashbi
+  tasks:
+    - name: Update the yum repo
+      ansible.builtin.yum:
+        update_cache: yes
+        state: present
+    - name: download tomcat software from artifactory
+      ansible.builtin.get_url:
+        url: http://192.168.4.252:8081/artifactory/Software/Linux-software/{{ tomcat_url }}.zip
+        dest: /home/{{ user_name }}/tomcat_test
+        username: admin
+        password: '{{ mysecret }}'
+    - name: download java software from artifactory
+      ansible.builtin.get_url:
+        url: http://192.168.4.252:8081/artifactory/Software/Linux-software/{{ java_url }}.zip
+        dest: /home/{{ user_name }}/tomcat_test
+        username: admin
+        password: '{{ mysecret }}'
+    - name: download mysql software 
+      ansible.builtin.get_url:
+        url: https://cdn.mysql.com/archives/mysql-8.0/mysql-{{ mysql_url }}-1.el7.x86_64.rpm-bundle.tar
+        dest: /root
+    - name: unzip java file
+      ansible.builtin.unarchive:
+        src: /u01/AnsibleTest/{{ java_url }}.zip
+        dest: /u01/AnsibleTest
+        remote_src: yes
+    - name: unzip tomcat file
+      ansible.builtin.unarchive:
+        src: /u01/AnsibleTest/{{ tomcat_url }}.zip
+        dest: /u01/AnsibleTest
+        remote_src: yes
+    - name: permissions changing for java
+      ansible.builtin.file:
+        path: /u01/AnsibleTest/{{ java_url }}
+        state: directory
+        recurse: yes
+        owner: '{{ user_name }}'
+        group: '{{ user_group }}'
+    - name: permissions tomcat changing
+      ansible.builtin.file:
+        path: /u01/AnsibleTest/{{ tomcat_url }}
+        state: directory
+        recurse: yes
+        owner: '{{ user_name }}'
+        group: '{{ user_group }}'
+

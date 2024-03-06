@@ -1,0 +1,22 @@
+---
+- name: Install tomcat9068 on oel7 instance
+  hosts: all
+  become: yes
+  vars:
+    mysecret: TanGo#12+1
+    java_url: http://192.168.4.252:8081/artifactory/Software/Linux-software/zulu11.60.19-ca-jdk11.0.17-linux_x64.zip
+    tomcat_url: http://192.168.4.252:8081/artifactory/Software/Linux-software/splashbi-apache-tomcat-9.0.70.zip
+  tasks:
+    - name: download tomcat software from artifactory
+      ansible.builtin.get_url:
+        url: '{{ tomcat_url }}'
+        dest: /u01/AnsibleTest
+        username: admin
+        password: '{{ mysecret }}'
+    - name: download java software from artifactory
+      ansible.builtin.get_url:
+        url: '{{ java_url }}'
+        dest: /u01/AnsibleTest
+        username: admin
+        password: '{{ mysecret }}'
+

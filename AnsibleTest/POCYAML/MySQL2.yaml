@@ -1,0 +1,26 @@
+---
+- name: Install tomcat9068 on oel7 instance
+  hosts: all
+  become: yes
+  vars:
+    mysecret: TanGo#12+1
+    mysql_url: 8.0.31
+    java_url: zulu11.60.19-ca-jdk11.0.17-linux_x64
+    tomcat_url: splashbi-apache-tomcat-9.0.70
+    user_name: splashbi
+    user_group: splashbi
+    mysql_new_password: Welcome#$4321
+  tasks:
+    - name: Update the yum repo
+      ansible.builtin.yum:
+        update_cache: yes
+        state: present
+    - name: Run the requested mysql grants
+      community.mysql.mysql_query:
+        login_host: 192.168.4.48
+        login_user: root
+        login_password: Welcome#$4321
+        login_port: 3306
+        query:
+          - CREATE USER 'root'@'%' IDENTIFIED BY 'Welcome#$4321';
+          - GRANT ALL PRIVILEGES ON . TO 'root'@'%';

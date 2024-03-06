@@ -1,0 +1,27 @@
+---
+- name: Install tomcat9068 on oel7 instance
+  hosts: all
+  become: yes
+  vars:
+    mysecret: TanGo#12+1
+    mysql_url: 8.0.31
+    java_url: zulu11.60.19-ca-jdk11.0.17-linux_x64
+    tomcat_url: splashbi-apache-tomcat-9.0.70
+    user_name: splashbi
+    user_group: splashbi
+    mysql_new_password: Welcome#$4321
+  tasks:
+    - name : create a directory for softwares
+      ansible.builtin.file:      
+        path: /home/{{ user_name }}/tomcat_test
+        state: directory
+        owner: '{{ user_name }}'
+        group: '{{ user_group }}'
+    - name: Update the yum repo
+      ansible.builtin.yum:
+        update_cache: yes
+    - name: copy my.cnf
+      ansible.builtin.copy:
+        src: /u01/AnsibleTest/my.cnf
+        dest: /etc/my.cnf
+        mode: 0644

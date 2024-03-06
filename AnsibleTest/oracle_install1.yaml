@@ -1,0 +1,81 @@
+---
+ - name: TO install Oracle Database
+   hosts: all
+   become: yes
+   vars:
+     mysecret: TanGo#12+1
+   tasks:
+     - name: Insert host entry in /etc/hosts
+       lineinfile:
+         path: /etc/hosts
+         line: '192.168.8.211 splashfin003-idc888.splashbi.com splashfin003-idc888'
+         state: present  # Ensure the line is present in the file
+     - name: Restart network service
+       service:
+         name: network
+         state: restarted
+     - name: Install oracle-database-preinstall-19c 
+       ansible.builtin.yum: 
+         name: oracle-database-preinstall-19c
+         update_cache: yes
+         state: present
+     - name: copy install.sh from local to server
+       ansible.builtin.copy:
+         src: /u01/AnsibleTest/install.sh
+         dest: /root
+         mode: 0777
+     - name: Run install.sh file
+       ansible.builtin.shell: source /root/install.sh
+     - name: Create oinstall group
+       group:
+         name: oinstall
+         gid: 54321
+         state: present
+     - name: Create dba group
+       group:
+         name: dba
+         gid: 54322
+         state: present
+     - name: Create oper group
+       group:
+         name: oper
+         gid: 54323
+         state: present
+     - name: Create oracle user
+       user:
+         name: oracle
+         uid: 54321
+         group: oinstall
+         groups: "dba,oper"
+         state: present
+     - name: Change user password
+       user:
+         name: oracle
+         update_password: always
+         password: "{{ newpassword|password_hash('sha512') }}"
+     - name: Ensure SELinux is set to enforcing mode
+       ansible.builtin.lineinfile:
+         path: /etc/selinux/config
+         regexp: '^SELINUX='
+         line: SELINUX=permissive
+     - name: Set SELinux to Permissive
+       command: setenforce 0
+     - name: Stop firewalld service
+       systemd:
+         name: firewalld
+         state: stopped
+     - name: Disable firewalld service
+       systemd:
+         name: firewalld
+         enabled: no
+     - name : create a directory for softwares
+       ansible.builtin.file:
+         path: /u01/app/oracle/product/19.0.0/dbhome_1
+         state: directory
+     - name: download Oracle software from artifactory
+       ansible.builtin.get_url:
+         url: http://192.168.4.252:8081/artifactory/Software/Linux-software/LINUX.X64_193000_db_home.zip
+         dest: /u01/app/oracle/product/19.0.0/dbhome_1
+         username: admin
+         password: '{{ mysecret }}'
+
